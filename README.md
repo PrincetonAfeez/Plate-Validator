@@ -1,4 +1,4 @@
-# 🏎️ Plate-Validator (v1.4)
+# 🏎️ Plate-Validator (v1.5)
 
 A modular license plate validation CLI for learning and demos. It uses regular expressions and a content filter on user input. **Patterns in `data/patterns.json` are simplified teaching examples, not an authoritative DMV reference** (real plates vary by type, era, and jurisdiction).
 
@@ -7,7 +7,7 @@ A modular license plate validation CLI for learning and demos. It uses regular e
 The application is built on the **Provider Pattern**, ensuring that logic and data remain decoupled for easy maintenance:
 
 - **`PatternRegistry` (Data Provider):** Dynamically loads regional formats from an external `patterns.json` database.
-- **`ValidatorEngine` (Logic Provider):** Executes RegEx matching and provides "Deep Explainer" diagnostics for failed inputs.
+- **`ValidatorEngine` (Logic Provider):** Executes RegEx matching and **failure feedback** (length, first position vs the region example, or pattern-only mismatch).
 - **`SecurityValidator` (Middleware):** A robust safety layer that prevents filter bypass via automated **Leetspeak Normalization**.
 - **`PlateValidatorApp` (Orchestrator):** Manages the state machine, user interaction, and persistent logging.
 
@@ -16,14 +16,14 @@ The application is built on the **Provider Pattern**, ensuring that logic and da
 ## 🚀 Key Features
 
 ### 1. 🌍 50-State & International Registry
-Full support for all **50 US States**, plus international standards for the **UK** and **France**. The system is built to be "Region-Agnostic"—adding a new country requires zero code changes, only a JSON entry.
+Full support for all **50 US States**, plus international standards for the **UK** and **France**. The system is built to be "Region-Agnostic"—adding a new country requires zero code changes, only a JSON entry. Optional top-level keys in `patterns.json` that start with **`_`** (e.g. `_meta`) are ignored by the registry so you can document the file without defining fake regions.
 
 ### 2. 🛡️ Leetspeak-Aware Security
-The `SecurityValidator` normalizes leetspeak, splits letter runs around digits, then matches blocked terms. Words of **four or more letters** use letter-boundary rules so innocent plates like `HELLO` are not rejected just because they contain `HELL`. Shorter words (e.g. `BAD`, `BUM`) are matched as substrings inside each letter run, which can still false-positive on rare strings (e.g. `BUM` inside `BUMBLE`).
+The `SecurityValidator` normalizes leetspeak, splits letter runs around digits, then matches blocked terms. Words of **four or more letters** use letter-boundary rules so innocent plates like `HELLO` are not rejected just because they contain `HELL`. Shorter words (≤3 letters) use substring matching inside each letter run; a tiny **allowlist** (e.g. `BUMBLE` for `BUM`) trims obvious false positives—extend `_short_word_allowed_parts` in code if you add more.
 * *Example:* Inputting `B4D-PL4T3` is normalized and checked so obfuscated `BAD` is still caught.
 
 ### 3. 🔍 Failure feedback
-When validation fails, the engine compares **cleaned** length (alphanumeric only) to the region’s example and otherwise reports a generic pattern mismatch. It does not pinpoint which character position failed.
+When validation fails, the engine compares **cleaned** length (alphanumeric only) to the region’s example, then—if lengths match—the **first position** where the character type (letter vs digit) or the exact character differs from the example. If the string matches the example visually but still fails the regex, it reports a pattern-only mismatch.
 
 ### 4. 📊 Persistent Audit Trail
 Every validation attempt is logged to `data/audit_log.json`. Users can view a formatted history of the last 10 attempts directly in the CLI using the `H` (History) command.
@@ -40,9 +40,9 @@ Leveraging the `Rich` library, the UI features a vertical, rectangular column la
 3. **Check History:** Type `H` to see a table of recent passes and fails.
 
 ## 🚀 Enterprise Features
-- **Batch Processing:** CSV bulk validation and export; unknown or blank regions still produce a `FAIL` row (no silent drops).
+- **Batch Processing:** CSV bulk validation and export; unknown or blank regions still produce a `FAIL` row (no silent drops). Missing headers, wrong column names, or no data rows yield **warnings** in the CLI; `bulk_validate_csv()` is used by tests with a temp file.
 - **Intelligent Correction:** Suggestions for common O/0 and I/1 typos where a single swap satisfies the pattern.
-- **Automated Testing:** `pytest` regression tests for the validator engine and security filter.
+- **Automated Testing:** `pytest` covers the engine, security filter, bulk CSV, audit log I/O, and registry loading (including `_`-prefixed JSON keys).
 
 
 

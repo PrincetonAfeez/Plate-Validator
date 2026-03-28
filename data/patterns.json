@@ -1,4 +1,7 @@
 {
+    "_meta": {
+        "note": "Simplified patterns for learning and demos only; real plates vary by type, era, and DMV rules."
+    },
     "AL": {"name": "Alabama", "pattern": "^[0-9]{1,2}[A-Z]{2}[0-9]{4,5}$", "example": "1AB1234"},
     "AK": {"name": "Alaska", "pattern": "^[A-Z]{3}[0-9]{3}$", "example": "ABC123"},
     "AZ": {"name": "Arizona", "pattern": "^[A-Z]{3}[0-9]{4}$", "example": "ABC1234"},

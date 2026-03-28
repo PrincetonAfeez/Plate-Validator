@@ -16,7 +16,15 @@ class PatternRegistry:
         """Initializes the registry by loading patterns from a JSON file."""
         try: # Start safety block for file operations
             with open(filepath, "r") as f:  # Attempting to open the pattern database
-                self.patterns = json.load(f)  # Parsing JSON data into a dictionary
+                raw = json.load(f)
+                if isinstance(raw, dict):
+                    self.patterns = {
+                        k: v
+                        for k, v in raw.items()
+                        if isinstance(k, str) and not k.startswith("_")
+                    }
+                else:
+                    self.patterns = {}
         except (FileNotFoundError, json.JSONDecodeError):  # Missing or invalid JSON
             self.patterns = {}  # Initializing as empty to avoid downstream crashes
 
@@ -29,6 +37,9 @@ class SecurityValidator:
     def __init__(self):
         """Initializes the security layer with a restricted word list and leet map."""
         self.blacklist = ["BAD", "HELL", "UGLY", "CRAP", "BUM", "SHIT", "FUCK"] # Blocked words
+        self._short_word_allowed_parts = {
+            "BUM": frozenset({"BUMBLE"}),
+        }
         self.leet_map = { # Mapping symbols/numbers to letters to prevent filter bypass
             '4': 'A', '@': 'A', '8': 'B', '3': 'E', '1': 'I', 
             '!': 'I', '|': 'I', '0': 'O', '5': 'S', '$': 'S', '7': 'T', '+': 'T'
@@ -42,7 +53,7 @@ class SecurityValidator:
         return translated # Return the normalized string
 
     def is_appropriate(self, plate_text):
-        """Scans leet-normalized text: long words use letter-boundary rules; short words use substring (see README)."""
+        """Scans leet-normalized text: long words use letter-boundary rules; short words use substring plus a small allowlist."""
         normalized = self.normalize_leet(plate_text).replace(" ", "").replace("-", "")
         parts = [p for p in re.split(r"[0-9]+", normalized) if p]
         for part in parts:
@@ -61,6 +72,9 @@ class SecurityValidator:
                     return False, word
                 else:
                     if word in part:
+                        allowed = self._short_word_allowed_parts.get(word)
+                        if allowed and part in allowed:
+                            continue
                         return False, word
         return True, None
 
@@ -74,14 +88,36 @@ class ValidatorEngine:
             return True, clean_plate
         return False, clean_plate
 
+    @staticmethod
+    def _char_kind(ch):
+        if ch.isdigit():
+            return "digit"
+        if ch.isalpha():
+            return "letter"
+        return "character"
+
     def get_failure_reason(self, plate, region_data):
-        """Analyzes the string to explain why validation failed safely."""
+        """Explains failure: length, first class/character mismatch vs example, or pattern-only mismatch."""
         example = region_data['example']
         clean_example = re.sub(r"[^A-Z0-9]", "", example.upper())
         desc = region_data.get('desc', "the required format")
+        pattern = region_data['pattern']
         if len(plate) != len(clean_example):
             return f"Length mismatch: Expected {len(clean_example)} chars, got {len(plate)}."
-        return f"Pattern mismatch: Format must be {desc}." # Return descriptive error
+        for i, (pc, ec) in enumerate(zip(plate, clean_example)):
+            if self._char_kind(pc) != self._char_kind(ec):
+                return (
+                    f"Position {i + 1}: expected a {self._char_kind(ec)} (like '{ec}'), "
+                    f"found '{pc}'."
+                )
+        for i, (pc, ec) in enumerate(zip(plate, clean_example)):
+            if pc != ec:
+                return f"Position {i + 1}: expected '{ec}', found '{pc}'."
+        if not re.fullmatch(pattern, plate):
+            return (
+                f"Pattern mismatch: same length as example but does not match the rule ({desc})."
+            )
+        return f"Pattern mismatch: Format must be {desc}."
 
     def suggest_correction(self, plate, region_data):
         """Suggests common alphanumeric swaps (like 0 for O) if validation fails."""
@@ -145,35 +181,75 @@ class PlateValidatorApp:
         self.security = SecurityValidator() # Initialize security layer
         self.audit = AuditManager() # Initialize persistence layer
 
+    @staticmethod
+    def _csv_cell(row, name):
+        want = name.lower()
+        for k, v in row.items():
+            if k is not None and k.strip().lower() == want:
+                return (v or "").strip()
+        return ""
+
+    def bulk_validate_csv(self, input_path, output_path="data/results.csv"):
+        """Reads input CSV, validates rows, writes output_path. Returns (results, warning_messages)."""
+        results = []
+        warnings = []
+        with open(input_path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            fieldnames = reader.fieldnames
+            if not fieldnames:
+                warnings.append("CSV has no header row; nothing was processed.")
+            else:
+                lowered = {(h or "").strip().lower() for h in fieldnames if h is not None and str(h).strip()}
+                for req in ("region", "plate"):
+                    if req not in lowered:
+                        warnings.append(
+                            f"Missing required column '{req}'. Use headers 'region' and 'plate' (case-insensitive)."
+                        )
+                        break
+                else:
+                    rows = 0
+                    for row in reader:
+                        rows += 1
+                        region = self._csv_cell(row, "region")
+                        plate = self._csv_cell(row, "plate")
+                        if not region:
+                            results.append({"Region": "", "Plate": plate, "Status": "FAIL"})
+                            continue
+                        r_data = self.registry.get_format(region)
+                        if not r_data:
+                            results.append({"Region": region, "Plate": plate, "Status": "FAIL"})
+                            continue
+                        v, _ = self.engine.validate(plate, r_data)
+                        s, _ = self.security.is_appropriate(plate)
+                        results.append(
+                            {"Region": region, "Plate": plate, "Status": "PASS" if v and s else "FAIL"}
+                        )
+                    if rows == 0:
+                        warnings.append(
+                            "No data rows after the header; results contain only the column header."
+                        )
+        out_dir = os.path.dirname(output_path)
+        if out_dir and not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        with open(output_path, "w", newline="", encoding="utf-8") as out:
+            writer = csv.DictWriter(out, fieldnames=["Region", "Plate", "Status"])
+            writer.writeheader()
+            writer.writerows(results)
+        return results, warnings
+
     def process_bulk(self):
         """Processes a CSV file of plates and exports results to results.csv."""
-        path = input("Enter CSV path (e.g., data/input.csv): ").strip() # Get file path
-        if not os.path.exists(path): return console.print("[red]File not found.[/]") # Check path
-        results = [] # Initialize results list
-        with open(path, 'r') as f:
-            for row in csv.DictReader(f):
-                region = (row.get("region") or "").strip()
-                plate = (row.get("plate") or "").strip()
-                if not region:
-                    results.append({"Region": "", "Plate": plate, "Status": "FAIL"})
-                    continue
-                r_data = self.registry.get_format(region)
-                if not r_data:
-                    results.append({"Region": region, "Plate": plate, "Status": "FAIL"})
-                    continue
-                v, _ = self.engine.validate(plate, r_data)
-                s, _ = self.security.is_appropriate(plate)
-                results.append({"Region": region, "Plate": plate, "Status": "PASS" if v and s else "FAIL"})
-        if not os.path.exists("data"):
-            os.makedirs("data")
-        with open("data/results.csv", 'w', newline='') as f: # Open destination CSV
-            writer = csv.DictWriter(f, fieldnames=["Region", "Plate", "Status"]) # Set headers
-            writer.writeheader(); writer.writerows(results) # Write data
-        console.print("[green]Bulk processing complete. Results saved to data/results.csv[/]") # Notify user
+        path = input("Enter CSV path (e.g., data/input.csv): ").strip()
+        if not os.path.exists(path):
+            return console.print("[red]File not found.[/]")
+        _, warnings = self.bulk_validate_csv(path)
+        for w in warnings:
+            console.print(f"[yellow]Warning:[/] {w}")
+        console.print("[green]Bulk processing complete. Results saved to data/results.csv[/]")
 
     def run(self):
         """Executes the main application loop and handles user input."""
-        console.print("\n[bold cyan]🏎️  Validator v1.4[/] [dim](L: List | H: History | B: Bulk | Q: Quit)[/]")
+        console.print("\n[bold cyan]🏎️  Validator v1.5[/] [dim](L: List | H: History | B: Bulk | Q: Quit)[/]")
         choice = input("Select Option or State Code: ").strip().upper() # Get user choice
         if choice == 'Q': sys.exit() # Handle quit
         if choice == 'L': return UIManager.display_menu(self.registry.patterns) # Handle menu
