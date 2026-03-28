@@ -42,6 +42,10 @@ class PlateValidatorApp:
         region = "US_CA" # Defaulting to CA for Step 1
         region_data = self.registry.get_format(region)
         
+        safe, word = self.security.is_appropriate(cleaned)
+        if not safe:
+            console.print(f"[bold red]REJECTED:[/bold red] Contains restricted word '{word}'")
+
         plate_input = input(f"\nEnter {region_data['region_name']} Plate (or 'q' to quit): ")
         if plate_input.lower() == 'q': sys.exit()
 
@@ -52,8 +56,20 @@ class PlateValidatorApp:
         else:
             console.print(Panel(f"[bold red]INVALID:[/bold red] {cleaned}\nExpected: {region_data['example']}", border_style="red"))
 
+class SecurityValidator:
+    """Handles content filtering and safety checks for license plates."""
+    def __init__(self):
+        # A small sample blacklist; in a real system, this would be an external file
+        self.blacklist = ["BAD", "HELL", "UGLY"] 
+
+    def is_appropriate(self, plate_text):
+        """Checks if the plate contains any blacklisted offensive substrings."""
+        for word in self.blacklist:
+            if word in plate_text.upper():
+                return False, word
+        return True, None
+
 if __name__ == "__main__":
     app = PlateValidatorApp()
     while True:
         app.run()
-                
