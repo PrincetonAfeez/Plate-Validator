@@ -17,7 +17,7 @@ class PatternRegistry:
         try: # Start safety block for file operations
             with open(filepath, "r") as f:  # Attempting to open the pattern database
                 self.patterns = json.load(f)  # Parsing JSON data into a dictionary
-        except FileNotFoundError:  # Error handling if the data file is missing
+        except (FileNotFoundError, json.JSONDecodeError):  # Missing or invalid JSON
             self.patterns = {}  # Initializing as empty to avoid downstream crashes
 
     def get_format(self, region_code):
@@ -42,12 +42,27 @@ class SecurityValidator:
         return translated # Return the normalized string
 
     def is_appropriate(self, plate_text):
-        """Scans the leet-normalized plate text for restricted substrings."""
-        normalized = self.normalize_leet(plate_text).replace(" ", "").replace("-", "") # Clean string
-        for word in self.blacklist: # Iterate through the forbidden word list
-            if word in normalized: # Check if the forbidden word is a substring
-                return False, word  # Return fail status and the word found
-        return True, None # Return success if no blacklisted words match
+        """Scans leet-normalized text: long words use letter-boundary rules; short words use substring (see README)."""
+        normalized = self.normalize_leet(plate_text).replace(" ", "").replace("-", "")
+        parts = [p for p in re.split(r"[0-9]+", normalized) if p]
+        for part in parts:
+            for word in self.blacklist:
+                wl = len(word)
+                if wl >= 4:
+                    strict = re.compile(r"(?<![A-Z])" + re.escape(word) + r"(?![A-Z])")
+                    if strict.search(part):
+                        return False, word
+                    if word not in part:
+                        continue
+                    if part == word:
+                        return False, word
+                    if part.startswith(word) and len(part) == wl + 1:
+                        continue
+                    return False, word
+                else:
+                    if word in part:
+                        return False, word
+        return True, None
 
 class ValidatorEngine:
     """The logic engine responsible for alphanumeric pattern matching and feedback."""
@@ -55,16 +70,17 @@ class ValidatorEngine:
         """Compares user input against the region's specific RegEx pattern."""
         pattern = region_data['pattern']  # Extracting the RegEx string from data
         clean_plate = re.sub(r'[^A-Z0-9]', '', plate_text.upper()) # Remove non-alphanumerics
-        if re.match(pattern, clean_plate):  # Performing the RegEx match against the cleaned plate
-            return True, clean_plate  # Return valid status and the cleaned string
-        return False, clean_plate  # Return invalid status and the cleaned string
+        if re.fullmatch(pattern, clean_plate):
+            return True, clean_plate
+        return False, clean_plate
 
     def get_failure_reason(self, plate, region_data):
         """Analyzes the string to explain why validation failed safely."""
-        example = region_data['example'] # Get valid example for comparison
-        desc = region_data.get('desc', "the required format") # Get human description
-        if len(plate) != len(example): # Check for length errors first
-            return f"Length mismatch: Expected {len(example)} chars, got {len(plate)}."
+        example = region_data['example']
+        clean_example = re.sub(r"[^A-Z0-9]", "", example.upper())
+        desc = region_data.get('desc', "the required format")
+        if len(plate) != len(clean_example):
+            return f"Length mismatch: Expected {len(clean_example)} chars, got {len(plate)}."
         return f"Pattern mismatch: Format must be {desc}." # Return descriptive error
 
     def suggest_correction(self, plate, region_data):
@@ -74,7 +90,7 @@ class ValidatorEngine:
             if char in swaps: # Check if the character is a common typo
                 candidate = list(plate) # Convert string to list for mutability
                 candidate[i] = swaps[char] # Swap the character
-                if re.match(region_data['pattern'], "".join(candidate)): # Test the fix
+                if re.fullmatch(region_data['pattern'], "".join(candidate)):
                     return "".join(candidate) # Return the suggested fix
         return None # Return None if no simple fix is found
 
@@ -95,9 +111,11 @@ class AuditManager:
     def get_all_logs(self):
         """Reads all logs from the JSON file safely."""
         if not os.path.exists(self.log_path): return [] # Return empty list if no file
-        with open(self.log_path, "r") as f: # Open file for reading
-            try: return json.load(f) # Parse JSON data
-            except: return [] # Return empty list if JSON is corrupt
+        with open(self.log_path, "r") as f:
+            try:
+                return json.load(f)
+            except (json.JSONDecodeError, OSError):
+                return []
 
 class UIManager:
     """Handles all terminal-based visual presentation logic."""
@@ -132,13 +150,22 @@ class PlateValidatorApp:
         path = input("Enter CSV path (e.g., data/input.csv): ").strip() # Get file path
         if not os.path.exists(path): return console.print("[red]File not found.[/]") # Check path
         results = [] # Initialize results list
-        with open(path, 'r') as f: # Open source CSV
-            for row in csv.DictReader(f): # Iterate through rows
-                r_data = self.registry.get_format(row['region']) # Get pattern for the region
-                if r_data: # If region exists
-                    v, c = self.engine.validate(row['plate'], r_data) # Validate format
-                    s, _ = self.security.is_appropriate(row['plate']) # Validate safety
-                    results.append({"Region": row['region'], "Plate": row['plate'], "Status": "PASS" if v and s else "FAIL"}) # Record
+        with open(path, 'r') as f:
+            for row in csv.DictReader(f):
+                region = (row.get("region") or "").strip()
+                plate = (row.get("plate") or "").strip()
+                if not region:
+                    results.append({"Region": "", "Plate": plate, "Status": "FAIL"})
+                    continue
+                r_data = self.registry.get_format(region)
+                if not r_data:
+                    results.append({"Region": region, "Plate": plate, "Status": "FAIL"})
+                    continue
+                v, _ = self.engine.validate(plate, r_data)
+                s, _ = self.security.is_appropriate(plate)
+                results.append({"Region": region, "Plate": plate, "Status": "PASS" if v and s else "FAIL"})
+        if not os.path.exists("data"):
+            os.makedirs("data")
         with open("data/results.csv", 'w', newline='') as f: # Open destination CSV
             writer = csv.DictWriter(f, fieldnames=["Region", "Plate", "Status"]) # Set headers
             writer.writeheader(); writer.writerows(results) # Write data

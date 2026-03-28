@@ -1,0 +1,62 @@
+[
+    {
+        "region": "UK",
+        "plate": "23JGSDF99",
+        "valid": false,
+        "safe": true
+    },
+    {
+        "plate": "23JGSDF99",
+        "valid": false,
+        "region": "UK",
+        "safe": true
+    },
+    {
+        "region": "FR",
+        "plate": "XXNNNZZ",
+        "valid": false,
+        "safe": true
+    },
+    {
+        "plate": "XXNNNZZ",
+        "valid": false,
+        "region": "FR",
+        "safe": true
+    },
+    {
+        "region": "FR",
+        "plate": "XXNNNZZ",
+        "valid": false,
+        "safe": true
+    },
+    {
+        "plate": "XXNNNZZ",
+        "valid": false,
+        "region": "FR",
+        "safe": true
+    },
+    {
+        "region": "UK",
+        "plate": "AB12CDE",
+        "valid": true,
+        "safe": true
+    },
+    {
+        "plate": "AB12CDE",
+        "valid": true,
+        "region": "UK",
+        "safe": true
+    },
+    {
+        "region": "CA",
+        "plate": "9EMY667",
+        "valid": true,
+        "safe": true
+    },
+    {
+        "plate": "9EMY667",
+        "valid": true,
+        "region": "CA",
+        "safe": true
+    }
+]

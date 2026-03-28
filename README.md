@@ -1,6 +1,6 @@
-# 🏎️ Plate-Validator (v1.3)
+# 🏎️ Plate-Validator (v1.4)
 
-A high-precision, modular license plate validation system designed for global scalability. This tool uses Advanced Regular Expressions and a "Zero-Trust" security layer to verify vehicle identifiers across 50+ regions.
+A modular license plate validation CLI for learning and demos. It uses regular expressions and a content filter on user input. **Patterns in `data/patterns.json` are simplified teaching examples, not an authoritative DMV reference** (real plates vary by type, era, and jurisdiction).
 
 ## 🏛️ System Architecture
 
@@ -19,11 +19,11 @@ The application is built on the **Provider Pattern**, ensuring that logic and da
 Full support for all **50 US States**, plus international standards for the **UK** and **France**. The system is built to be "Region-Agnostic"—adding a new country requires zero code changes, only a JSON entry.
 
 ### 2. 🛡️ Leetspeak-Aware Security
-The `SecurityValidator` doesn't just check for "BAD" words; it uses a translation map to catch obfuscated entries. 
-* *Example:* Inputting `B4D-PL4T3` is automatically normalized to `BADPLATE` before passing through the blacklist.
+The `SecurityValidator` normalizes leetspeak, splits letter runs around digits, then matches blocked terms. Words of **four or more letters** use letter-boundary rules so innocent plates like `HELLO` are not rejected just because they contain `HELL`. Shorter words (e.g. `BAD`, `BUM`) are matched as substrings inside each letter run, which can still false-positive on rare strings (e.g. `BUM` inside `BUMBLE`).
+* *Example:* Inputting `B4D-PL4T3` is normalized and checked so obfuscated `BAD` is still caught.
 
-### 3. 🔍 Deep Regex Explainer
-When validation fails, the engine analyzes the string to provide human-readable feedback, distinguishing between **Length Mismatches** and **Pattern/Character Mismatches**.
+### 3. 🔍 Failure feedback
+When validation fails, the engine compares **cleaned** length (alphanumeric only) to the region’s example and otherwise reports a generic pattern mismatch. It does not pinpoint which character position failed.
 
 ### 4. 📊 Persistent Audit Trail
 Every validation attempt is logged to `data/audit_log.json`. Users can view a formatted history of the last 10 attempts directly in the CLI using the `H` (History) command.
@@ -40,10 +40,9 @@ Leveraging the `Rich` library, the UI features a vertical, rectangular column la
 3. **Check History:** Type `H` to see a table of recent passes and fails.
 
 ## 🚀 Enterprise Features
-- **Batch Processing:** Support for `.csv` bulk validation and export.
-- **Intelligent Correction:** Fuzzy logic to suggest fixes for common O/0 and I/1 typos.
-- **Automated Testing:** Full `pytest` coverage for mission-critical logic.
-- **Categorized Registry:** Support for specialized vehicle types (Auto/Comm/Moto).
+- **Batch Processing:** CSV bulk validation and export; unknown or blank regions still produce a `FAIL` row (no silent drops).
+- **Intelligent Correction:** Suggestions for common O/0 and I/1 typos where a single swap satisfies the pattern.
+- **Automated Testing:** `pytest` regression tests for the validator engine and security filter.
 
 
 
