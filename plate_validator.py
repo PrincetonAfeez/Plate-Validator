@@ -92,39 +92,42 @@ class PlateValidatorApp:
             json.dump(history[-10:], f, indent=4) # Keep last 10 for efficiency
 
 
-    def run(self):
+def run(self):
         """Main operational loop for the application."""
         console.print("\n[bold cyan]🏎️  License Plate Validator v1.2[/bold cyan]")
         console.print("[dim]Type 'L' for State List | 'Q' to Quit[/dim]")
         
-        # Capture initial command or region code
         choice = input("\nEnter State Code: ").strip().upper()
         
-        if choice == 'Q': sys.exit()  # Exit command
-        if choice == 'L':  # List command
+        if choice == 'Q': sys.exit()
+        if choice == 'L':
             self.display_menu()
-            return  # Restart loop to allow input after viewing list
+            return # <--- Execution stops here and restarts the loop
         
-        region_data = self.registry.get_format(choice)  # Attempting to fetch region data
+        region_data = self.registry.get_format(choice)
         
-        if not region_data:  # Handling invalid state codes
-            console.print("[bold red]Error:[/bold red] State code not found in registry.")
-            return
+        if not region_data:
+            console.print("[bold red]Error:[/bold red] State code not found.")
+            return # <--- Execution stops here if the code is invalid
 
-        # Input phase for the actual license plate
         plate_input = input(f"Enter {region_data['name']} Plate: ").strip()
-
-        audit_data = {"plate": plate_input, "valid": is_valid, "region": choice}
-        self.log_audit(audit_data)
-        console.print(f"\n[dim]Logged to data/audit_log.json[/dim]")
         
-        # Processing phase: Running security and validation engines
+        # --- Variables are defined ONLY here ---
         is_valid, cleaned = self.engine.validate(plate_input, region_data)
         is_safe, blocked_word = self.security.is_appropriate(cleaned)
 
-        # Output phase: Rendering the result
-        self.display_result(is_valid, is_safe, cleaned, region_data['name'], region_data['example'], blocked_word)
+        # Move the logging and display logic INSIDE this flow
+        audit_data = {"plate": cleaned, "valid": is_valid, "region": choice, "safe": is_safe}
+        self.log_audit(audit_data)
 
+        if not is_safe:
+            console.print(Panel(f"[bold red]REJECTED:[/bold red] Restricted word '{blocked_word}'", title="Security Alert"))
+        elif is_valid:
+            console.print(Panel(f"[bold green]VALID:[/bold green] {cleaned}", border_style="green"))
+        else:
+            reason = self.engine.get_failure_reason(cleaned, region_data)
+            console.print(Panel(f"[bold red]INVALID:[/bold red] {cleaned}\n[yellow]Reason:[/yellow] {reason}", title="Format Error"))
+            
 if __name__ == "__main__":
     app = PlateValidatorApp()  # Instantiating the app
     while True:  # Commencing the persistent operational loop
