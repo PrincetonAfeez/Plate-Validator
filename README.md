@@ -53,3 +53,4 @@ Add a helper method to the ValidatorEngine to analyze where the user's input dev
 Step 8: Vertical Rectangular UI & Logging
 Refactor the display_menu to use a vertical rectangular layout (Columns) and add the audit logging logic.
 
+Step 9: Add a display_history method and update the input logic to trigger it when the user types 'H'.

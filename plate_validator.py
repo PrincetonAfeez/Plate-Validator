@@ -91,18 +91,43 @@ class PlateValidatorApp:
         with open(log_path, "w") as f:
             json.dump(history[-10:], f, indent=4) # Keep last 10 for efficiency
 
+    def display_history(self):
+        """Feature 7: Reads and displays the audit log in a professional table."""
+        log_path = "data/audit_log.json"
+        
+        if not os.path.exists(log_path):
+            console.print("[yellow]No audit history found yet.[/yellow]")
+            return
 
-def run(self):
-        """Main operational loop for the application."""
+        with open(log_path, "r") as f:
+            history = json.load(f)
+
+        table = Table(title="📜 Recent Validation Audit", show_header=True, header_style="bold yellow")
+        table.add_column("Region", justify="center", style="cyan")
+        table.add_column("Plate", style="white")
+        table.add_column("Status", justify="center")
+
+        # Display the last 10 entries
+        for entry in history[-10:]:
+            status = "[green]PASS[/]" if entry['valid'] and entry['safe'] else "[red]FAIL[/]"
+            table.add_row(entry['region'], entry['plate'], status)
+        
+        console.print(table)
+
+    def run(self):
+        """Updated loop to handle the History command."""
         console.print("\n[bold cyan]🏎️  License Plate Validator v1.2[/bold cyan]")
-        console.print("[dim]Type 'L' for State List | 'Q' to Quit[/dim]")
+        console.print("[dim]Type 'L' List | 'H' History | 'Q' Quit[/dim]")
         
         choice = input("\nEnter State Code: ").strip().upper()
         
         if choice == 'Q': sys.exit()
         if choice == 'L':
             self.display_menu()
-            return # <--- Execution stops here and restarts the loop
+            return
+        if choice == 'H': # <--- New History Trigger
+            self.display_history()
+            return
         
         region_data = self.registry.get_format(choice)
         
@@ -127,7 +152,7 @@ def run(self):
         else:
             reason = self.engine.get_failure_reason(cleaned, region_data)
             console.print(Panel(f"[bold red]INVALID:[/bold red] {cleaned}\n[yellow]Reason:[/yellow] {reason}", title="Format Error"))
-            
+
 if __name__ == "__main__":
     app = PlateValidatorApp()  # Instantiating the app
     while True:  # Commencing the persistent operational loop
