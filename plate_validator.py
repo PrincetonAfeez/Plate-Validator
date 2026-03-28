@@ -72,17 +72,21 @@ class ValidatorEngine:
         return False, clean_plate  # Return failure and the cleaned string
 
     def get_failure_reason(self, plate, region_data):
-        """Feature 4: Analyzes the string to explain exactly why validation failed."""
-        pattern = region_data['pattern']
-        if len(plate) != len(region_data['example']):
-            return f"Length mismatch: Expected {len(region_data['example'])} characters."
-        
-        # Simple character-by-character analysis
-        for i, char in enumerate(plate):
-            # This is a simplified architect's logic for failure feedback
-            if not re.match(pattern[i+1] if i+1 < len(pattern) else pattern, char):
-                return f"Character '{char}' at position {i+1} does not match regional format."
-        return "Unknown format error."
+        """Feature 4: Analyzes the string to explain why validation failed safely."""
+        example = region_data['example']
+        description = region_data.get('desc', "the required format") # Fallback to generic
+
+        # 1. Check Length first
+        if len(plate) != len(example):
+            return f"Length mismatch: Expected {len(example)} characters, but got {len(plate)}."
+
+        # 2. Check for basic alphanumeric integrity
+        if not plate.isalnum():
+            return "Invalid characters: Please use only letters and numbers."
+
+        # 3. Provide the descriptive pattern requirement
+        # Since slicing Regex is complex, we point the user to the standard format
+        return f"Pattern mismatch: For {region_data['name']}, the format must be {description}."
 
     def suggest_correction(self, plate, region_data):
         """Feature 1: Suggests common alphanumeric swaps if validation fails."""
