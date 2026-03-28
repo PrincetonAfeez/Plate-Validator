@@ -24,18 +24,39 @@ class PatternRegistry:
         return self.patterns.get(region_code.upper())  # Returning data for the uppercase code
 
 class SecurityValidator:
-    """Provides a safety layer to filter out offensive or restricted content."""
+    """Handles content filtering and safety checks for license plates."""
     def __init__(self):
         """Initializes the security layer with a restricted word list."""
-        self.blacklist = ["BAD", "HELL", "UGLY", "CRAP", "BUM"]  # Internal safety list
+        # Standard restricted words
+        self.blacklist = ["BAD", "HELL", "UGLY", "CRAP", "BUM", "SHIT", "FUCK"] 
+        
+        # Leetspeak mapping for normalization
+        self.leet_map = {
+            '4': 'A', '@': 'A',
+            '8': 'B',
+            '3': 'E',
+            '1': 'I', '!': 'I', '|': 'I',
+            '0': 'O',
+            '5': 'S', '$': 'S',
+            '7': 'T', '+': 'T'
+        }
+
+    def normalize_leet(self, text):
+        """Translates leetspeak characters back to standard alphabet."""
+        translated = text.upper()
+        for char, replacement in self.leet_map.items():
+            translated = translated.replace(char, replacement)
+        return translated
 
     def is_appropriate(self, plate_text):
-        """Scans the normalized plate text for restricted substrings."""
-        normalized = plate_text.upper().replace(" ", "")  # Ensuring standard format for check
-        for word in self.blacklist:  # Iterating through each blocked word
-            if word in normalized:  # If a restricted word is found within the plate
-                return False, word  # Rejecting the plate and returning the flagged word
-        return True, None  # Passing the plate as safe
+        """Scans the leet-normalized plate text for restricted substrings."""
+        # First, normalize the plate to catch hidden words (e.g., B4D -> BAD)
+        normalized = self.normalize_leet(plate_text).replace(" ", "").replace("-", "")
+        
+        for word in self.blacklist:
+            if word in normalized:
+                return False, word  # Returns False and the word that triggered the flag
+        return True, None
 
 class ValidatorEngine:
     """The logic engine responsible for alphanumeric pattern matching."""
@@ -139,7 +160,13 @@ class PlateValidatorApp:
         
         # --- Variables are defined ONLY here ---
         is_valid, cleaned = self.engine.validate(plate_input, region_data)
-        is_safe, blocked_word = self.security.is_appropriate(cleaned)
+        
+        # Security check now uses the leetspeak-aware normalization
+        is_safe, blocked_word = self.security.is_appropriate(plate_input)
+
+        # Logging and UI logic remains the same
+        self.log_audit({"region": choice, "plate": cleaned, "valid": is_valid, "safe": is_safe})
+    
 
         # Move the logging and display logic INSIDE this flow
         audit_data = {"plate": cleaned, "valid": is_valid, "region": choice, "safe": is_safe}

@@ -54,3 +54,16 @@ Step 8: Vertical Rectangular UI & Logging
 Refactor the display_menu to use a vertical rectangular layout (Columns) and add the audit logging logic.
 
 Step 9: Add a display_history method and update the input logic to trigger it when the user types 'H'.
+
+Step 10: Fil Content Filter Check
+To ensure the SecurityValidator is catching "BAD" words
+
+The app is now remarkably robust
+1. 50-State + International Registry (JSON Data)
+2. Security Middleware (Content Filtering)
+3. Validation Engine (RegEx)
+4. Deep Explainer (Failure Logic)
+5. Audit Logging (Persistence)
+6. Interactive UI (Rich Tables/Columns)
+
+Step 11: Adding "leetspeak" normalization is a high-level System Architect move. It ensures that the SecurityValidator isn't fooled by simple character substitutions (like B4D instead of BAD).
