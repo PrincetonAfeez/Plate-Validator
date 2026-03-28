@@ -93,3 +93,6 @@ The app is now remarkably robust
 
 Step 12: The Testing Suite (pytest)
 Before adding new logic, ensure not to  break the old logic. This is called Regression Testing.
+
+Step 13: Bulk CSV Processing
+Add a method to handle large batches of data.

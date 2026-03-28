@@ -6,6 +6,7 @@ from rich.panel import Panel  # Rich component for displaying info in bordered b
 from rich.table import Table  # Rich component for rendering structured data tables
 import os  # Added for file path checks in logging
 from rich.columns import Columns  # Added for rectangular vertical menu
+import csv # Add to top of file
 
 console = Console()  # Initializing the global Rich console instance
 
@@ -180,6 +181,25 @@ class PlateValidatorApp:
             reason = self.engine.get_failure_reason(cleaned, region_data)
             console.print(Panel(f"[bold red]INVALID:[/bold red] {cleaned}\n[yellow]Reason:[/yellow] {reason}", title="Format Error"))
 
+    def process_bulk(self, file_path):
+        """Feature 2: Processes a CSV of plates and exports results."""
+        if not os.path.exists(file_path):
+            console.print("[bold red]File not found.[/]")
+            return
+
+        with open(file_path, mode='r') as infile, open('data/results.csv', mode='w', newline='') as outfile:
+            reader = csv.DictReader(infile) # Expects columns: 'region', 'plate'
+            writer = csv.writer(outfile)
+            writer.writerow(["Region", "Plate", "Status", "Safe"])
+
+            for row in reader:
+                region_data = self.registry.get_format(row['region'])
+                is_valid, _ = self.engine.validate(row['plate'], region_data)
+                is_safe, _ = self.security.is_appropriate(row['plate'])
+                writer.writerow([row['region'], row['plate'], is_valid, is_safe])
+        
+        console.print("[bold green]Bulk processing complete. Results saved to data/results.csv[/]")
+        
 if __name__ == "__main__":
     app = PlateValidatorApp()  # Instantiating the app
     while True:  # Commencing the persistent operational loop
