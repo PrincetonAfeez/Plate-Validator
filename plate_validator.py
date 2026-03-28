@@ -1,20 +1,20 @@
 import re  # Library for Regular Expression matching to verify plate formats
 import json  # Library for parsing the external JSON pattern database
 import sys  # Library for system-level operations like safe exiting
+import os  # Library for file path and directory management
+import csv  # Library for reading and writing CSV files for bulk processing
 from rich.console import Console  # Rich library tool for professional terminal output
 from rich.panel import Panel  # Rich component for displaying info in bordered boxes
 from rich.table import Table  # Rich component for rendering structured data tables
-import os  # Added for file path checks in logging
-from rich.columns import Columns  # Added for rectangular vertical menu
-import csv # Add to top of file
+from rich.columns import Columns  # Rich tool for the rectangular vertical menu layout
 
-console = Console()  # Initializing the global Rich console instance
+console = Console()  # Initializing the global Rich console instance for UI rendering
 
 class PatternRegistry:
     """Handles the retrieval of regional plate standards from external data."""
     def __init__(self, filepath="data/patterns.json"):
         """Initializes the registry by loading patterns from a JSON file."""
-        try:
+        try: # Start safety block for file operations
             with open(filepath, "r") as f:  # Attempting to open the pattern database
                 self.patterns = json.load(f)  # Parsing JSON data into a dictionary
         except FileNotFoundError:  # Error handling if the data file is missing
@@ -25,198 +25,153 @@ class PatternRegistry:
         return self.patterns.get(region_code.upper())  # Returning data for the uppercase code
 
 class SecurityValidator:
-    """Handles content filtering and safety checks for license plates."""
+    """Handles content filtering and leetspeak-aware safety checks."""
     def __init__(self):
-        """Initializes the security layer with a restricted word list."""
-        # Standard restricted words
-        self.blacklist = ["BAD", "HELL", "UGLY", "CRAP", "BUM", "SHIT", "FUCK"] 
-        
-        # Leetspeak mapping for normalization
-        self.leet_map = {
-            '4': 'A', '@': 'A',
-            '8': 'B',
-            '3': 'E',
-            '1': 'I', '!': 'I', '|': 'I',
-            '0': 'O',
-            '5': 'S', '$': 'S',
-            '7': 'T', '+': 'T'
+        """Initializes the security layer with a restricted word list and leet map."""
+        self.blacklist = ["BAD", "HELL", "UGLY", "CRAP", "BUM", "SHIT", "FUCK"] # Blocked words
+        self.leet_map = { # Mapping symbols/numbers to letters to prevent filter bypass
+            '4': 'A', '@': 'A', '8': 'B', '3': 'E', '1': 'I', 
+            '!': 'I', '|': 'I', '0': 'O', '5': 'S', '$': 'S', '7': 'T', '+': 'T'
         }
 
     def normalize_leet(self, text):
-        """Translates leetspeak characters back to standard alphabet."""
-        translated = text.upper()
-        for char, replacement in self.leet_map.items():
-            translated = translated.replace(char, replacement)
-        return translated
+        """Translates leetspeak characters back to standard alphabet letters."""
+        translated = text.upper() # Work with uppercase for consistency
+        for char, replacement in self.leet_map.items(): # Loop through the leet dictionary
+            translated = translated.replace(char, replacement) # Swap symbol for letter
+        return translated # Return the normalized string
 
     def is_appropriate(self, plate_text):
         """Scans the leet-normalized plate text for restricted substrings."""
-        # First, normalize the plate to catch hidden words (e.g., B4D -> BAD)
-        normalized = self.normalize_leet(plate_text).replace(" ", "").replace("-", "")
-        
-        for word in self.blacklist:
-            if word in normalized:
-                return False, word  # Returns False and the word that triggered the flag
-        return True, None
+        normalized = self.normalize_leet(plate_text).replace(" ", "").replace("-", "") # Clean string
+        for word in self.blacklist: # Iterate through the forbidden word list
+            if word in normalized: # Check if the forbidden word is a substring
+                return False, word  # Return fail status and the word found
+        return True, None # Return success if no blacklisted words match
 
 class ValidatorEngine:
-    """The logic engine responsible for alphanumeric pattern matching."""
+    """The logic engine responsible for alphanumeric pattern matching and feedback."""
     def validate(self, plate_text, region_data):
         """Compares user input against the region's specific RegEx pattern."""
-        pattern = region_data['pattern']  # Extracting the RegEx string
-        # Cleaning the input for the engine: uppercase and strip non-alphanumerics
-        clean_plate = re.sub(r'[^A-Z0-9]', '', plate_text.upper())
-        
-        if re.match(pattern, clean_plate):  # Performing the RegEx match
-            return True, clean_plate  # Return success and the cleaned string
-        return False, clean_plate  # Return failure and the cleaned string
+        pattern = region_data['pattern']  # Extracting the RegEx string from data
+        clean_plate = re.sub(r'[^A-Z0-9]', '', plate_text.upper()) # Remove non-alphanumerics
+        if re.match(pattern, clean_plate):  # Performing the RegEx match against the cleaned plate
+            return True, clean_plate  # Return valid status and the cleaned string
+        return False, clean_plate  # Return invalid status and the cleaned string
 
     def get_failure_reason(self, plate, region_data):
-        """Feature 4: Analyzes the string to explain why validation failed safely."""
-        example = region_data['example']
-        description = region_data.get('desc', "the required format") # Fallback to generic
-
-        # 1. Check Length first
-        if len(plate) != len(example):
-            return f"Length mismatch: Expected {len(example)} characters, but got {len(plate)}."
-
-        # 2. Check for basic alphanumeric integrity
-        if not plate.isalnum():
-            return "Invalid characters: Please use only letters and numbers."
-
-        # 3. Provide the descriptive pattern requirement
-        # Since slicing Regex is complex, we point the user to the standard format
-        return f"Pattern mismatch: For {region_data['name']}, the format must be {description}."
+        """Analyzes the string to explain why validation failed safely."""
+        example = region_data['example'] # Get valid example for comparison
+        desc = region_data.get('desc', "the required format") # Get human description
+        if len(plate) != len(example): # Check for length errors first
+            return f"Length mismatch: Expected {len(example)} chars, got {len(plate)}."
+        return f"Pattern mismatch: Format must be {desc}." # Return descriptive error
 
     def suggest_correction(self, plate, region_data):
-        """Feature 1: Suggests common alphanumeric swaps if validation fails."""
-        # Common typos: 0 vs O, 1 vs I, 5 vs S
-        swaps = {'0': 'O', 'O': '0', '1': 'I', 'I': '1', '5': 'S', 'S': '5'}
-        for i, char in enumerate(plate):
-            if char in swaps:
-                candidate = list(plate)
-                candidate[i] = swaps[char]
-                if re.match(region_data['pattern'], "".join(candidate)):
-                    return "".join(candidate)
-        return None
+        """Suggests common alphanumeric swaps (like 0 for O) if validation fails."""
+        swaps = {'0': 'O', 'O': '0', '1': 'I', 'I': '1', '5': 'S', 'S': '5'} # Common typos
+        for i, char in enumerate(plate): # Iterate through each character in the plate
+            if char in swaps: # Check if the character is a common typo
+                candidate = list(plate) # Convert string to list for mutability
+                candidate[i] = swaps[char] # Swap the character
+                if re.match(region_data['pattern'], "".join(candidate)): # Test the fix
+                    return "".join(candidate) # Return the suggested fix
+        return None # Return None if no simple fix is found
+
+class AuditManager:
+    """Handles persistence: logging attempts and reading history."""
+    def __init__(self, log_path="data/audit_log.json"):
+        """Sets the path for the JSON audit file."""
+        self.log_path = log_path # Store the file path
+
+    def log_attempt(self, entry):
+        """Persists a single validation attempt to the JSON audit log."""
+        history = self.get_all_logs() # Fetch existing logs
+        history.append(entry) # Add new entry to the list
+        if not os.path.exists("data"): os.makedirs("data") # Ensure data folder exists
+        with open(self.log_path, "w") as f: # Open file for writing
+            json.dump(history[-10:], f, indent=4) # Save only the last 10 entries
+
+    def get_all_logs(self):
+        """Reads all logs from the JSON file safely."""
+        if not os.path.exists(self.log_path): return [] # Return empty list if no file
+        with open(self.log_path, "r") as f: # Open file for reading
+            try: return json.load(f) # Parse JSON data
+            except: return [] # Return empty list if JSON is corrupt
+
+class UIManager:
+    """Handles all terminal-based visual presentation logic."""
+    @staticmethod
+    def display_menu(patterns):
+        """Renders the regions in a rectangular vertical column layout."""
+        panels = [Panel(f"[bold cyan]{c}[/]\n[dim]{info['name']}[/]", expand=False) for c, info in sorted(patterns.items())]
+        console.print(Columns(panels, equal=True, expand=True)) # Print grid of states
+
+    @staticmethod
+    def display_history(logs):
+        """Renders the audit history in a stylized Rich Table."""
+        if not logs: return console.print("[yellow]No history found.[/]") # Handle empty logs
+        table = Table(title="📜 Recent Audits", header_style="bold yellow") # Initialize table
+        table.add_column("Region"); table.add_column("Plate"); table.add_column("Status") # Columns
+        for e in logs: # Loop through logs
+            stat = "[green]PASS[/]" if e['valid'] and e['safe'] else "[red]FAIL[/]" # Determine status
+            table.add_row(e['region'], e['plate'], stat) # Add row to table
+        console.print(table) # Render the table
 
 class PlateValidatorApp:
+    """The Controller: Orchestrates logic between Data, UI, and Engine."""
     def __init__(self):
-        self.registry = PatternRegistry()
-        self.engine = ValidatorEngine()
-        self.security = SecurityValidator()
+        """Initializes all sub-systems of the application."""
+        self.registry = PatternRegistry() # Initialize data registry
+        self.engine = ValidatorEngine() # Initialize logic engine
+        self.security = SecurityValidator() # Initialize security layer
+        self.audit = AuditManager() # Initialize persistence layer
 
-    def display_menu(self):
-        """Feature: Renders a vertical, rectangular menu of regions."""
-        # Create a list of stylized panels for each state/country
-        state_panels = [
-            Panel(f"[bold cyan]{code}[/]\n[dim]{info['name']}[/]", expand=False, border_style="blue")
-            for code, info in sorted(self.registry.patterns.items())
-        ]
-        # Display them in a rectangular column layout
-        console.print(Columns(state_panels, equal=True, expand=True))
-
-    def log_audit(self, entry):
-        """Feature 6: Persists validation attempts to data/audit_log.json."""
-        log_path = "data/audit_log.json"
-        history = []
-        if os.path.exists(log_path):
-            with open(log_path, "r") as f:
-                try: history = json.load(f)
-                except: history = []
-        
-        history.append(entry)
-        with open(log_path, "w") as f:
-            json.dump(history[-10:], f, indent=4) # Keep last 10 for efficiency
-
-    def display_history(self):
-        """Feature 7: Reads and displays the audit log in a professional table."""
-        log_path = "data/audit_log.json"
-        
-        if not os.path.exists(log_path):
-            console.print("[yellow]No audit history found yet.[/yellow]")
-            return
-
-        with open(log_path, "r") as f:
-            history = json.load(f)
-
-        table = Table(title="📜 Recent Validation Audit", show_header=True, header_style="bold yellow")
-        table.add_column("Region", justify="center", style="cyan")
-        table.add_column("Plate", style="white")
-        table.add_column("Status", justify="center")
-
-        # Display the last 10 entries
-        for entry in history[-10:]:
-            status = "[green]PASS[/]" if entry['valid'] and entry['safe'] else "[red]FAIL[/]"
-            table.add_row(entry['region'], entry['plate'], status)
-        
-        console.print(table)
+    def process_bulk(self):
+        """Processes a CSV file of plates and exports results to results.csv."""
+        path = input("Enter CSV path (e.g., data/input.csv): ").strip() # Get file path
+        if not os.path.exists(path): return console.print("[red]File not found.[/]") # Check path
+        results = [] # Initialize results list
+        with open(path, 'r') as f: # Open source CSV
+            for row in csv.DictReader(f): # Iterate through rows
+                r_data = self.registry.get_format(row['region']) # Get pattern for the region
+                if r_data: # If region exists
+                    v, c = self.engine.validate(row['plate'], r_data) # Validate format
+                    s, _ = self.security.is_appropriate(row['plate']) # Validate safety
+                    results.append({"Region": row['region'], "Plate": row['plate'], "Status": "PASS" if v and s else "FAIL"}) # Record
+        with open("data/results.csv", 'w', newline='') as f: # Open destination CSV
+            writer = csv.DictWriter(f, fieldnames=["Region", "Plate", "Status"]) # Set headers
+            writer.writeheader(); writer.writerows(results) # Write data
+        console.print("[green]Bulk processing complete. Results saved to data/results.csv[/]") # Notify user
 
     def run(self):
-        """Updated loop to handle the History command."""
-        console.print("\n[bold cyan]🏎️  License Plate Validator v1.2[/bold cyan]")
-        console.print("[dim]Type 'L' List | 'H' History | 'Q' Quit[/dim]")
+        """Executes the main application loop and handles user input."""
+        console.print("\n[bold cyan]🏎️  Validator v1.4[/] [dim](L: List | H: History | B: Bulk | Q: Quit)[/]")
+        choice = input("Select Option or State Code: ").strip().upper() # Get user choice
+        if choice == 'Q': sys.exit() # Handle quit
+        if choice == 'L': return UIManager.display_menu(self.registry.patterns) # Handle menu
+        if choice == 'H': return UIManager.display_history(self.audit.get_all_logs()) # Handle history
+        if choice == 'B': return self.process_bulk() # Handle bulk processing
         
-        choice = input("\nEnter State Code: ").strip().upper()
+        region = self.registry.get_format(choice) # Attempt to fetch regional data
+        if not region: return console.print("[red]Invalid Region Code.[/]") # Handle unknown codes
+
+        plate_in = input(f"Enter {region['name']} Plate: ").strip() # Get plate string
+        valid, clean = self.engine.validate(plate_in, region) # Perform validation
+        safe, word = self.security.is_appropriate(plate_in) # Perform security check
         
-        if choice == 'Q': sys.exit()
-        if choice == 'L':
-            self.display_menu()
-            return
-        if choice == 'H': # <--- New History Trigger
-            self.display_history()
-            return
-        
-        region_data = self.registry.get_format(choice)
-        
-        if not region_data:
-            console.print("[bold red]Error:[/bold red] State code not found.")
-            return # <--- Execution stops here if the code is invalid
+        self.audit.log_attempt({"region": choice, "plate": clean, "valid": valid, "safe": safe}) # Log results
 
-        plate_input = input(f"Enter {region_data['name']} Plate: ").strip()
-        
-        # --- Variables are defined ONLY here ---
-        is_valid, cleaned = self.engine.validate(plate_input, region_data)
-        
-        # Security check now uses the leetspeak-aware normalization
-        is_safe, blocked_word = self.security.is_appropriate(plate_input)
-
-        # Logging and UI logic remains the same
-        self.log_audit({"region": choice, "plate": cleaned, "valid": is_valid, "safe": is_safe})
-    
-
-        # Move the logging and display logic INSIDE this flow
-        audit_data = {"plate": cleaned, "valid": is_valid, "region": choice, "safe": is_safe}
-        self.log_audit(audit_data)
-
-        if not is_safe:
-            console.print(Panel(f"[bold red]REJECTED:[/bold red] Restricted word '{blocked_word}'", title="Security Alert"))
-        elif is_valid:
-            console.print(Panel(f"[bold green]VALID:[/bold green] {cleaned}", border_style="green"))
-        else:
-            reason = self.engine.get_failure_reason(cleaned, region_data)
-            console.print(Panel(f"[bold red]INVALID:[/bold red] {cleaned}\n[yellow]Reason:[/yellow] {reason}", title="Format Error"))
-
-    def process_bulk(self, file_path):
-        """Feature 2: Processes a CSV of plates and exports results."""
-        if not os.path.exists(file_path):
-            console.print("[bold red]File not found.[/]")
-            return
-
-        with open(file_path, mode='r') as infile, open('data/results.csv', mode='w', newline='') as outfile:
-            reader = csv.DictReader(infile) # Expects columns: 'region', 'plate'
-            writer = csv.writer(outfile)
-            writer.writerow(["Region", "Plate", "Status", "Safe"])
-
-            for row in reader:
-                region_data = self.registry.get_format(row['region'])
-                is_valid, _ = self.engine.validate(row['plate'], region_data)
-                is_safe, _ = self.security.is_appropriate(row['plate'])
-                writer.writerow([row['region'], row['plate'], is_valid, is_safe])
-        
-        console.print("[bold green]Bulk processing complete. Results saved to data/results.csv[/]")
+        if not safe: # Display security failure
+            console.print(Panel(f"[red]REJECTED:[/] Found restricted word: '{word}'", title="Security"))
+        elif valid: # Display success
+            console.print(Panel(f"[green]VALID:[/] {clean}", subtitle=region['name'], border_style="green"))
+        else: # Display format failure with suggestions
+            msg = self.engine.get_failure_reason(clean, region) # Get the "why"
+            fix = self.engine.suggest_correction(clean, region) # Get the "fix"
+            if fix: msg += f"\n[yellow]Did you mean:[/] {fix}?" # Append suggestion if found
+            console.print(Panel(msg, title="Format Error", border_style="red")) # Render panel
 
 if __name__ == "__main__":
-    app = PlateValidatorApp()  # Instantiating the app
-    while True:  # Commencing the persistent operational loop
-        app.run()
+    app = PlateValidatorApp() # Create the application instance
+    while True: app.run() # Run the persistent execution loop
