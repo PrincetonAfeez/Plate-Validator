@@ -48,5 +48,7 @@
     "WA": {"name": "Washington", "pattern": "^[A-Z]{3}[0-9]{4}$", "example": "ABC1234"},
     "WV": {"name": "West Virginia", "pattern": "^[0-9][A-Z]{2}[0-9]{3}$", "example": "1AB234"},
     "WI": {"name": "Wisconsin", "pattern": "^[A-Z]{3}[0-9]{4}$", "example": "ABC1234"},
-    "WY": {"name": "Wyoming", "pattern": "^[0-9]{1,2}[0-9]{4,5}$", "example": "121234"}
+    "WY": {"name": "Wyoming", "pattern": "^[0-9]{1,2}[0-9]{4,5}$", "example": "121234"},
+    "UK": {"name": "United Kingdom", "pattern": "^[A-Z]{2}[0-9]{2}[A-Z]{3}$", "example": "BD51SMR", "desc": "2 Letters, 2 Digits, 3 Letters"},
+    "FR": {"name": "France", "pattern": "^[A-Z]{2}[0-9]{3}[A-Z]{2}$", "example": "AA123AA", "desc": "2 Letters, 3 Digits, 2 Letters"}
 }

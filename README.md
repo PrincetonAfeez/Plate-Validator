@@ -39,3 +39,6 @@ Step 4: Implement "Strict Mode" (Offensive Filter)
 Add a SecurityValidator class to plate_validator.py to ensure plates don't contain "not-safe-for-work" (NSFW) strings.
 
 step 5: Expand the Registry (data/patterns.json) for all 50 states
+
+Step 6: Expand the Registry & European support (data/patterns.json) to also include the UK and France
+
