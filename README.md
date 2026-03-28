@@ -39,6 +39,13 @@ Leveraging the `Rich` library, the UI features a vertical, rectangular column la
 2. **Verify Plate:** Enter a State Code (e.g., `TX`), then input the plate number.
 3. **Check History:** Type `H` to see a table of recent passes and fails.
 
+## 🚀 Enterprise Features
+- **Batch Processing:** Support for `.csv` bulk validation and export.
+- **Intelligent Correction:** Fuzzy logic to suggest fixes for common O/0 and I/1 typos.
+- **Automated Testing:** Full `pytest` coverage for mission-critical logic.
+- **Categorized Registry:** Support for specialized vehicle types (Auto/Comm/Moto).
+
+
 
 License Plate Validator Tutorial
 
