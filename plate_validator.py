@@ -1,24 +1,25 @@
-import re # Library for Regular Expression matching
-import json # Library for loading regional patterns
-import sys # Library for system operations
-from rich.console import Console # UI Library
-from rich.panel import Panel # UI Layout
+import re  # Library for Regular Expression matching
+import json  # Library for loading regional patterns from JSON
+import sys  # Library for system-level operations
+from rich.console import Console  # UI Library for professional output
+from rich.panel import Panel  # UI component for bordered boxes
+from rich.table import Table  # UI component for displaying the state menu
 
 console = Console() # Initialize the console
 
 class PatternRegistry:
-    """Handles loading and retrieving plate formats from external data."""
+    """Handles loading and retrieving plate formats from external JSON data."""
     def __init__(self, filepath="data/patterns.json"):
         try:
             with open(filepath, "r") as f:
-                self.patterns = json.load(f) # Load JSON into dictionary
+                self.patterns = json.load(f)
         except FileNotFoundError:
-            self.patterns = {} # Fallback to empty if file is missing
+            self.patterns = {}
 
     def get_format(self, region_code):
-        """Returns the specific pattern data for a region."""
-        return self.patterns.get(region_code)
-
+        """Retrieves the specific dictionary for a given region code."""
+        return self.patterns.get(region_code.upper())
+        
 class ValidatorEngine:
     """The logic engine that performs the RegEx validation."""
     def validate(self, plate_text, region_data):
