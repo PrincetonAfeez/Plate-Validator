@@ -1,12 +1,16 @@
-# 🏎️ License Plate Validator
+# 🏎️ License Plate-Validator (v1.1)
 
-A high-precision validation tool designed to verify vehicle license plates against regional formatting standards using Advanced Regular Expressions.
+A modular license plate validation system built with **Python** and **RegEx**.
 
-## 🛠️ Planned Features
-- **Multi-Region Support:** Validation for US States, UK, and EU formats.
-- **Pattern Matching:** Strict RegEx enforcement for alphanumeric sequences.
-- **Real-time Feedback:** Instant reporting on format mismatches.
-- **JSON Registry:** Externalized format definitions for easy scalability.
+## 🚀 Features
+- **Multi-State Support:** Registry-based patterns for CA, TX, and FL.
+- **Strict Mode:** Integrated `SecurityValidator` to filter offensive content.
+- **Data-Driven:** Patterns are decoupled from logic using a JSON registry.
+
+## 🏛️ Architecture
+- `PatternRegistry`: Data Provider for regional formats.
+- `ValidatorEngine`: Logic Provider for RegEx execution.
+- `SecurityValidator`: Middleware for safety and compliance.
 
 
 
@@ -26,6 +30,10 @@ This architecture follows the Provider Pattern: One class stores the "source of 
 Step 1: Create the Pattern Registry
 Store the California (CA) patterns in a JSON file. CA plates typically follow the 1ABC234 format for autos -> data/patterns.json
 
-Step 2: Now build the modular class structure
+Step 2: Build the PlateValidator Skeleton and implement the logic
 
-Step 3:
+Step 3: Expand the Registry (data/patterns.json)
+Add Texas and Florida to demonstrate how the system handles different alphanumeric structures.
+
+Step 4: Implement "Strict Mode" (Offensive Filter)
+Add a SecurityValidator class to plate_validator.py to ensure plates don't contain "not-safe-for-work" (NSFW) strings.
