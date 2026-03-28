@@ -1,23 +1,5 @@
 [
     {
-        "region": "UK",
-        "plate": "23JGSDF99",
-        "valid": false,
-        "safe": true
-    },
-    {
-        "plate": "23JGSDF99",
-        "valid": false,
-        "region": "UK",
-        "safe": true
-    },
-    {
-        "region": "FR",
-        "plate": "XXNNNZZ",
-        "valid": false,
-        "safe": true
-    },
-    {
         "plate": "XXNNNZZ",
         "valid": false,
         "region": "FR",
@@ -57,6 +39,24 @@
         "plate": "9EMY667",
         "valid": true,
         "region": "CA",
+        "safe": true
+    },
+    {
+        "region": "UK",
+        "plate": "6797679UH",
+        "valid": false,
+        "safe": true
+    },
+    {
+        "region": "FR",
+        "plate": "546KGHJGLHJ",
+        "valid": false,
+        "safe": true
+    },
+    {
+        "region": "CA",
+        "plate": "9MYY667",
+        "valid": true,
         "safe": true
     }
 ]
