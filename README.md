@@ -91,4 +91,5 @@ The app is now remarkably robust
 6. Interactive UI (Rich Tables/Columns)
 7. Advanced Filtering (Leetspeak Normalization)
 
-Step 11: Adding "leetspeak" normalization is a high-level System Architect move. It ensures that the SecurityValidator isn't fooled by simple character substitutions (like B4D instead of BAD).
+Step 12: The Testing Suite (pytest)
+Before adding new logic, ensure not to  break the old logic. This is called Regression Testing.
