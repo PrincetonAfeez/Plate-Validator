@@ -19,7 +19,7 @@ class PatternRegistry:
     def get_format(self, region_code):
         """Retrieves the specific dictionary for a given region code."""
         return self.patterns.get(region_code.upper())
-        
+
 class ValidatorEngine:
     """The logic engine that performs the RegEx validation."""
     def validate(self, plate_text, region_data):
@@ -60,8 +60,8 @@ class PlateValidatorApp:
 class SecurityValidator:
     """Handles content filtering and safety checks for license plates."""
     def __init__(self):
-        # A small sample blacklist; in a real system, this would be an external file
-        self.blacklist = ["BAD", "HELL", "UGLY"] 
+        # List of restricted substrings to ensure data integrity
+        self.blacklist = ["BAD", "HELL", "UGLY", "CRAP"] 
 
     def is_appropriate(self, plate_text):
         """Checks if the plate contains any blacklisted offensive substrings."""
