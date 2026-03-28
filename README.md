@@ -1,24 +1,46 @@
-# 🏎️ License Plate-Validator (v1.1)
+# 🏎️ Plate-Validator (v1.3)
 
-A modular license plate validation system built with **Python** and **RegEx**.
+A high-precision, modular license plate validation system designed for global scalability. This tool uses Advanced Regular Expressions and a "Zero-Trust" security layer to verify vehicle identifiers across 50+ regions.
 
-## 🚀 Features
-- **Multi-State Support:** Registry-based patterns for CA, TX, and FL.
-- **Strict Mode:** Integrated `SecurityValidator` to filter offensive content.
-- **Data-Driven:** Patterns are decoupled from logic using a JSON registry.
+## 🏛️ System Architecture
 
-## 🏛️ Architecture
-- `PatternRegistry`: Data Provider for regional formats.
-- `ValidatorEngine`: Logic Provider for RegEx execution.
-- `SecurityValidator`: Middleware for safety and compliance.
+The application is built on the **Provider Pattern**, ensuring that logic and data remain decoupled for easy maintenance:
 
-## 💎 Advanced Features
-- **Deep Explainer:** Provides character-level feedback on failed validations.
-- **Global Registry:** Support for US, UK, and EU (France) standards.
-- **Rectangular UX:** Optimized CLI menu layout using `Rich.Columns`.
-- **Audit Trail:** JSON-based logging of recent validation attempts.
+- **`PatternRegistry` (Data Provider):** Dynamically loads regional formats from an external `patterns.json` database.
+- **`ValidatorEngine` (Logic Provider):** Executes RegEx matching and provides "Deep Explainer" diagnostics for failed inputs.
+- **`SecurityValidator` (Middleware):** A robust safety layer that prevents filter bypass via automated **Leetspeak Normalization**.
+- **`PlateValidatorApp` (Orchestrator):** Manages the state machine, user interaction, and persistent logging.
+
+---
+
+## 🚀 Key Features
+
+### 1. 🌍 50-State & International Registry
+Full support for all **50 US States**, plus international standards for the **UK** and **France**. The system is built to be "Region-Agnostic"—adding a new country requires zero code changes, only a JSON entry.
+
+### 2. 🛡️ Leetspeak-Aware Security
+The `SecurityValidator` doesn't just check for "BAD" words; it uses a translation map to catch obfuscated entries. 
+* *Example:* Inputting `B4D-PL4T3` is automatically normalized to `BADPLATE` before passing through the blacklist.
+
+### 3. 🔍 Deep Regex Explainer
+When validation fails, the engine analyzes the string to provide human-readable feedback, distinguishing between **Length Mismatches** and **Pattern/Character Mismatches**.
+
+### 4. 📊 Persistent Audit Trail
+Every validation attempt is logged to `data/audit_log.json`. Users can view a formatted history of the last 10 attempts directly in the CLI using the `H` (History) command.
+
+### 5. 🎨 Optimized Rectangular UX
+Leveraging the `Rich` library, the UI features a vertical, rectangular column layout for region selection, making it easy to navigate 50+ options in a standard terminal window.
+
+---
+
+## 🛠️ Usage
+
+1. **View Regions:** Type `L` to see the rectangular grid of supported states.
+2. **Verify Plate:** Enter a State Code (e.g., `TX`), then input the plate number.
+3. **Check History:** Type `H` to see a table of recent passes and fails.
 
 
+License Plate Validator Tutorial
 
 I want to build these 3 CLI apps to learn  Data Integrity & Validation (The "Guard") with a focus on RegEx, Error Handling, and Data Cleansing
 
@@ -58,12 +80,15 @@ Step 9: Add a display_history method and update the input logic to trigger it wh
 Step 10: Fil Content Filter Check
 To ensure the SecurityValidator is catching "BAD" words
 
+Step 11: Adding "leetspeak" normalization is a high-level System Architect move. It ensures that the SecurityValidator isn't fooled by simple character substitutions (like B4D instead of BAD).
+
 The app is now remarkably robust
-1. 50-State + International Registry (JSON Data)
+1. Global Formats -> 50-State + International Registry (JSON Data)
 2. Security Middleware (Content Filtering)
 3. Validation Engine (RegEx)
 4. Deep Explainer (Failure Logic)
 5. Audit Logging (Persistence)
 6. Interactive UI (Rich Tables/Columns)
+7. Advanced Filtering (Leetspeak Normalization)
 
 Step 11: Adding "leetspeak" normalization is a high-level System Architect move. It ensures that the SecurityValidator isn't fooled by simple character substitutions (like B4D instead of BAD).
