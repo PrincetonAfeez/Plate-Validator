@@ -4,6 +4,8 @@ import sys  # Library for system-level operations like safe exiting
 from rich.console import Console  # Rich library tool for professional terminal output
 from rich.panel import Panel  # Rich component for displaying info in bordered boxes
 from rich.table import Table  # Rich component for rendering structured data tables
+import os  # Added for file path checks in logging
+from rich.columns import Columns  # Added for rectangular vertical menu
 
 console = Console()  # Initializing the global Rich console instance
 
@@ -61,32 +63,34 @@ class ValidatorEngine:
         return "Unknown format error."
 
 class PlateValidatorApp:
-    """The System Orchestrator connecting UI, Data, Logic, and Security."""
     def __init__(self):
-        """Bootstraps the application components."""
-        self.registry = PatternRegistry()  # Loading the data registry
-        self.engine = ValidatorEngine()  # Initializing the validation logic
-        self.security = SecurityValidator()  # Initializing the security layer
+        self.registry = PatternRegistry()
+        self.engine = ValidatorEngine()
+        self.security = SecurityValidator()
 
     def display_menu(self):
-        """Renders a formatted table of all 50 supported US States."""
-        table = Table(title="📍 Region Registry", show_header=True, header_style="bold magenta")
-        table.add_column("Code", style="cyan", justify="center")  # State abbreviations
-        table.add_column("State Name", style="white")  # Full state names
+        """Feature: Renders a vertical, rectangular menu of regions."""
+        # Create a list of stylized panels for each state/country
+        state_panels = [
+            Panel(f"[bold cyan]{code}[/]\n[dim]{info['name']}[/]", expand=False, border_style="blue")
+            for code, info in sorted(self.registry.patterns.items())
+        ]
+        # Display them in a rectangular column layout
+        console.print(Columns(state_panels, equal=True, expand=True))
 
-        for code, info in sorted(self.registry.patterns.items()):  # Alphabetical iteration
-            table.add_row(code, info['name'])  # Adding each state to the table
+    def log_audit(self, entry):
+        """Feature 6: Persists validation attempts to data/audit_log.json."""
+        log_path = "data/audit_log.json"
+        history = []
+        if os.path.exists(log_path):
+            with open(log_path, "r") as f:
+                try: history = json.load(f)
+                except: history = []
         
-        console.print(table)  # Outputting the table to the console
+        history.append(entry)
+        with open(log_path, "w") as f:
+            json.dump(history[-10:], f, indent=4) # Keep last 10 for efficiency
 
-    def display_result(self, is_valid, is_safe, cleaned, region_name, example, blocked=None):
-        """Renders the final architectural report based on validation results."""
-        if not is_safe:  # Content filter failure takes priority
-            console.print(Panel(f"[bold red]REJECTED:[/bold red] '{cleaned}' contains restricted word: [yellow]{blocked}[/yellow]", title="Security Alert"))
-        elif is_valid:  # Success state
-            console.print(Panel(f"[bold green]VALID:[/bold green] {cleaned}\n[dim]Matches {region_name} standard format.[/dim]", border_style="green"))
-        else:  # Format mismatch state
-            console.print(Panel(f"[bold red]INVALID:[/bold red] {cleaned}\n[yellow]Expected Format:[/yellow] {example}", title=f"Format Error: {region_name}"))
 
     def run(self):
         """Main operational loop for the application."""
@@ -109,6 +113,10 @@ class PlateValidatorApp:
 
         # Input phase for the actual license plate
         plate_input = input(f"Enter {region_data['name']} Plate: ").strip()
+
+        audit_data = {"plate": plate_input, "valid": is_valid, "region": choice}
+        self.log_audit(audit_data)
+        console.print(f"\n[dim]Logged to data/audit_log.json[/dim]")
         
         # Processing phase: Running security and validation engines
         is_valid, cleaned = self.engine.validate(plate_input, region_data)
