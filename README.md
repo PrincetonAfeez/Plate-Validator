@@ -12,6 +12,11 @@ A modular license plate validation system built with **Python** and **RegEx**.
 - `ValidatorEngine`: Logic Provider for RegEx execution.
 - `SecurityValidator`: Middleware for safety and compliance.
 
+## 💎 Advanced Features
+- **Deep Explainer:** Provides character-level feedback on failed validations.
+- **Global Registry:** Support for US, UK, and EU (France) standards.
+- **Rectangular UX:** Optimized CLI menu layout using `Rich.Columns`.
+- **Audit Trail:** JSON-based logging of recent validation attempts.
 
 
 
@@ -44,4 +49,7 @@ Step 6: Expand the Registry & European support (data/patterns.json) to also incl
 
 Step 7: The "Deep Regex" Explainer
 Add a helper method to the ValidatorEngine to analyze where the user's input deviated from the required pattern.
+
+Step 8: Vertical Rectangular UI & Logging
+Refactor the display_menu to use a vertical rectangular layout (Columns) and add the audit logging logic.
 
