@@ -2,7 +2,19 @@
     "US_CA": {
         "region_name": "California",
         "pattern": "^[0-9][A-Z]{3}[0-9]{3}$",
-        "example": "7GHT429",
-        "description": "Standard California Auto (1 Digit, 3 Letters, 3 Digits)"
+        "example": "1ABC234",
+        "description": "1 Digit, 3 Letters, 3 Digits"
+    },
+    "US_TX": {
+        "region_name": "Texas",
+        "pattern": "^[A-Z]{3}[0-9]{4}$",
+        "example": "ABC1234",
+        "description": "3 Letters, 4 Digits"
+    },
+    "US_FL": {
+        "region_name": "Florida",
+        "pattern": "^[A-Z0-9]{6}$",
+        "example": "A1B2C3",
+        "description": "6 Alphanumeric Characters"
     }
 }
