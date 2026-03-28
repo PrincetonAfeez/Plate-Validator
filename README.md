@@ -42,3 +42,6 @@ step 5: Expand the Registry (data/patterns.json) for all 50 states
 
 Step 6: Expand the Registry & European support (data/patterns.json) to also include the UK and France
 
+Step 7: The "Deep Regex" Explainer
+Add a helper method to the ValidatorEngine to analyze where the user's input deviated from the required pattern.
+

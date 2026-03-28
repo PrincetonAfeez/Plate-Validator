@@ -47,6 +47,19 @@ class ValidatorEngine:
             return True, clean_plate  # Return success and the cleaned string
         return False, clean_plate  # Return failure and the cleaned string
 
+    def get_failure_reason(self, plate, region_data):
+        """Feature 4: Analyzes the string to explain exactly why validation failed."""
+        pattern = region_data['pattern']
+        if len(plate) != len(region_data['example']):
+            return f"Length mismatch: Expected {len(region_data['example'])} characters."
+        
+        # Simple character-by-character analysis
+        for i, char in enumerate(plate):
+            # This is a simplified architect's logic for failure feedback
+            if not re.match(pattern[i+1] if i+1 < len(pattern) else pattern, char):
+                return f"Character '{char}' at position {i+1} does not match regional format."
+        return "Unknown format error."
+
 class PlateValidatorApp:
     """The System Orchestrator connecting UI, Data, Logic, and Security."""
     def __init__(self):
