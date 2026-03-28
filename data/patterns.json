@@ -1,0 +1,8 @@
+{
+    "US_CA": {
+        "region_name": "California",
+        "pattern": "^[0-9][A-Z]{3}[0-9]{3}$",
+        "example": "7GHT429",
+        "description": "Standard California Auto (1 Digit, 3 Letters, 3 Digits)"
+    }
+}
