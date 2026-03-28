@@ -84,6 +84,18 @@ class ValidatorEngine:
                 return f"Character '{char}' at position {i+1} does not match regional format."
         return "Unknown format error."
 
+    def suggest_correction(self, plate, region_data):
+        """Feature 1: Suggests common alphanumeric swaps if validation fails."""
+        # Common typos: 0 vs O, 1 vs I, 5 vs S
+        swaps = {'0': 'O', 'O': '0', '1': 'I', 'I': '1', '5': 'S', 'S': '5'}
+        for i, char in enumerate(plate):
+            if char in swaps:
+                candidate = list(plate)
+                candidate[i] = swaps[char]
+                if re.match(region_data['pattern'], "".join(candidate)):
+                    return "".join(candidate)
+        return None
+
 class PlateValidatorApp:
     def __init__(self):
         self.registry = PatternRegistry()
@@ -199,7 +211,7 @@ class PlateValidatorApp:
                 writer.writerow([row['region'], row['plate'], is_valid, is_safe])
         
         console.print("[bold green]Bulk processing complete. Results saved to data/results.csv[/]")
-        
+
 if __name__ == "__main__":
     app = PlateValidatorApp()  # Instantiating the app
     while True:  # Commencing the persistent operational loop
